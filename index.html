@@ -140,6 +140,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   </div>
   <div class="input-row">
     <textarea id="userInput" rows="1" placeholder="Describe a problem or app to build..." enterkeyhint="send"></textarea>
+    <button type="button" id="micBtn" title="Voice input" aria-label="Voice input" style="width:44px;height:44px;flex:0 0 44px;border-radius:12px;background:#161a32;border:1px solid #2a3055;color:#8b92b8;font-size:1.15rem;display:grid;place-items:center">🎤</button>
     <button type="button" id="sendBtn" aria-label="Send">Go</button>
   </div>
 </footer>
@@ -172,6 +173,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 <label for="sPlanRounds">Minimum plan rounds (2-8)</label><input type="number" id="sPlanRounds" min="2" max="8" value="3">
 <label for="sBuildIters">Max build attempts (1-8)</label><input type="number" id="sBuildIters" min="1" max="8" value="4">
 <div class="chk"><input type="checkbox" id="sAutosave" checked><label for="sAutosave">Autosave</label></div>
+<div class="chk"><input type="checkbox" id="sSpeak"><label for="sSpeak">Speak team messages (text-to-speech)</label></div>
 <div class="dfoot"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn primary" id="bSaveSettings">Save</button></div>
 </div></dialog>
 <dialog id="dMembers"><div class="dlg"><h2>Council members</h2><div id="membersList"></div>
@@ -199,6 +201,6 @@ if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
   });
 }
 </script>
-<script src="app.js?v=5"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

@@ -68,6 +68,7 @@
       ],
       board: { points: [], concerns: [], steps: [] },
       research: "",
+      researchItems: [],
       buildHistory: [],
       refs: "",
       docs: [],
@@ -84,7 +85,7 @@
 
   function defaultSettings() {
     return {
-      v: 3,
+      v: 4,
       engine: "free",
       url: "",
       model: "",
@@ -98,7 +99,8 @@
       perMember: false,
       autoBuild: false,
       autosave: true,
-      showContinue: true
+      showContinue: true,
+      speakTeam: false
     };
   }
 
@@ -384,7 +386,28 @@
         if (state.research && !/^No useful/.test(state.research)) {
           var c = document.createElement("details");
           c.className = "card";
-          c.innerHTML = "<summary>Research notes from the web</summary><div class='sumtxt'>" + esc(state.research).slice(0, 3000) + "</div>";
+          c.open = true;
+          var nItems = (state.researchItems && state.researchItems.length) || state.research.split("\n\n").length;
+          var bodyHtml = "";
+          if (state.researchItems && state.researchItems.length) {
+            bodyHtml = state.researchItems.slice(0, 14).map(function (it) {
+              if (typeof it === "string") return "<div style='margin:8px 0;padding-bottom:8px;border-bottom:1px solid #2a3055'>" + esc(it) + "</div>";
+              var link = it.url ? ' <a href="' + esc(it.url) + '" target="_blank" rel="noopener" style="color:#3dd9c5;font-size:.8rem">Open source ↗</a>' : "";
+              return "<div style='margin:8px 0;padding-bottom:8px;border-bottom:1px solid #2a3055'>" +
+                "<div style='font-weight:600;color:#3dd9c5;font-size:.82rem'>" + esc(it.source || "Source") + " · " + esc(it.title || "") + link + "</div>" +
+                "<div style='margin-top:3px'>" + esc(it.text || "") + "</div></div>";
+            }).join("");
+          } else {
+            bodyHtml = "<div class='sumtxt'>" + esc(state.research).slice(0, 3500) + "</div>";
+          }
+          c.innerHTML = "<summary>🔎 Research notes (" + nItems + " sources)</summary>" +
+            "<div style='margin-top:8px'>" + bodyHtml + "</div>" +
+            "<div class='actions' style='margin-top:10px;display:flex;flex-wrap:wrap;gap:6px'>" +
+            '<button type="button" class="btn" data-research-act="refresh">↻ Refresh</button>' +
+            '<button type="button" class="btn" data-research-act="custom">+ Custom query</button>' +
+            '<button type="button" class="btn" data-research-act="copy">Copy</button>' +
+            '<button type="button" class="btn" data-research-act="pin">Pin to Notes</button>' +
+            '<button type="button" class="btn" data-research-act="clear">Clear</button></div>';
           frag.appendChild(c);
         }
         for (var j = 0; j < state.messages.length; j++) {
@@ -589,25 +612,27 @@
     });
   }
 
-  /* ---- research (public Wikipedia + DuckDuckGo, with timeouts) ---- */
+  /* ---- research (Wikipedia + DuckDuckGo + news-oriented queries, with source links) ---- */
   function timedFetch(url, ms) {
     var ctl = new AbortController();
-    var t = setTimeout(function () { ctl.abort(); }, ms || 8000);
+    var t = setTimeout(function () { ctl.abort(); }, ms || 9000);
     return fetch(url, { signal: ctl.signal }).then(function (r) { clearTimeout(t); return r; }, function (e) { clearTimeout(t); throw e; });
   }
   function searchWiki(q) {
-    return timedFetch("https://en.wikipedia.org/w/api.php?action=opensearch&search=" + encodeURIComponent(q) + "&limit=4&namespace=0&format=json&origin=*")
+    return timedFetch("https://en.wikipedia.org/w/api.php?action=opensearch&search=" + encodeURIComponent(q) + "&limit=5&namespace=0&format=json&origin=*")
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
         if (!j || !j[1] || !j[1].length) return [];
-        return Promise.all(j[1].slice(0, 3).map(function (t) {
+        return Promise.all(j[1].slice(0, 4).map(function (t, idx) {
+          var pageUrl = (j[3] && j[3][idx]) || ("https://en.wikipedia.org/wiki/" + encodeURIComponent(t.replace(/ /g, "_")));
           return timedFetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(t))
-            .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
-        })).then(function (pages) {
-          return pages.filter(Boolean).map(function (p) {
-            return p.extract ? ("Wikipedia - " + (p.title || "") + ": " + String(p.extract).slice(0, 420)) : null;
-          }).filter(Boolean);
-        });
+            .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+            .then(function (p) {
+              if (!p || !p.extract) return null;
+              var url = (p.content_urls && p.content_urls.desktop && p.content_urls.desktop.page) || pageUrl;
+              return { source: "Wikipedia", title: p.title || t, text: String(p.extract).slice(0, 480), url: url };
+            });
+        })).then(function (pages) { return pages.filter(Boolean); });
       }).catch(function () { return []; });
   }
   function searchDdg(q) {
@@ -616,24 +641,58 @@
       .then(function (j) {
         if (!j) return [];
         var bits = [];
-        if (j.AbstractText) bits.push("DuckDuckGo - " + (j.Heading || "summary") + ": " + String(j.AbstractText).slice(0, 420));
-        if (j.Answer) bits.push("Answer: " + String(j.Answer).slice(0, 240));
-        (j.RelatedTopics || []).slice(0, 4).forEach(function (t) { if (t.Text) bits.push("Related: " + String(t.Text).slice(0, 200)); });
+        if (j.AbstractText) {
+          bits.push({ source: "DuckDuckGo", title: j.Heading || "Summary", text: String(j.AbstractText).slice(0, 480), url: j.AbstractURL || ("https://duckduckgo.com/?q=" + encodeURIComponent(q)) });
+        }
+        if (j.Answer) {
+          bits.push({ source: "DuckDuckGo Answer", title: "Direct answer", text: String(j.Answer).slice(0, 280), url: j.AbstractURL || ("https://duckduckgo.com/?q=" + encodeURIComponent(q)) });
+        }
+        (j.RelatedTopics || []).slice(0, 5).forEach(function (t) {
+          if (t.Text) {
+            bits.push({ source: "Related", title: (t.FirstURL || "").replace(/^https?:\/\/[^/]+\//, "").slice(0, 40) || "Topic", text: String(t.Text).slice(0, 220), url: t.FirstURL || ("https://duckduckgo.com/?q=" + encodeURIComponent(q)) });
+          }
+        });
         return bits;
       }).catch(function () { return []; });
   }
-  function doResearch(topic) {
-    var queries = [topic, topic + " best practices"];
+  function formatResearchItem(item) {
+    if (typeof item === "string") return item;
+    var line = (item.source || "Source") + " — " + (item.title || "") + ": " + (item.text || "");
+    if (item.url) line += "\n🔗 " + item.url;
+    return line;
+  }
+  function doResearch(topic, extraQueries) {
+    var base = String(topic || "").trim() || "web app";
+    var queries = [base, base + " best practices", base + " mobile web OR Safari OR iPhone", "latest OR news OR current " + base];
+    if (Array.isArray(extraQueries)) {
+      extraQueries.forEach(function (q) { if (q && String(q).trim()) queries.push(String(q).trim()); });
+    } else if (extraQueries && String(extraQueries).trim()) {
+      queries.push(String(extraQueries).trim());
+    }
+    var seenQ = {};
+    queries = queries.filter(function (q) {
+      var k = q.toLowerCase().slice(0, 60);
+      if (seenQ[k]) return false;
+      seenQ[k] = true;
+      return true;
+    }).slice(0, 6);
     var chain = Promise.resolve([]);
     queries.forEach(function (q) {
       chain = chain.then(function (acc) {
-        return Promise.all([searchWiki(q), searchDdg(q)]).then(function (pair) { return acc.concat(pair[0]).concat(pair[1]); });
+        return Promise.all([searchWiki(q), searchDdg(q)]).then(function (pair) {
+          return acc.concat(pair[0] || []).concat(pair[1] || []);
+        });
       });
     });
     return chain.then(function (results) {
       var seen = {}, unique = [];
-      results.forEach(function (r) { var k = r.slice(0, 80); if (!seen[k]) { seen[k] = true; unique.push(r); } });
-      state.research = unique.slice(0, 12).join("\n\n") || "No useful public research results returned.";
+      results.forEach(function (r) {
+        var key = (typeof r === "string" ? r : (r.title || "") + (r.text || "")).slice(0, 90);
+        if (!seen[key]) { seen[key] = true; unique.push(r); }
+      });
+      var formatted = unique.slice(0, 16).map(formatResearchItem);
+      state.research = formatted.join("\n\n") || "No useful public research results returned.";
+      state.researchItems = unique.slice(0, 16);
       return state.research;
     });
   }
@@ -989,11 +1048,29 @@
     return out;
   }
 
+  function speakText(text, who) {
+    if (!settings.speakTeam || !window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(String(text || "").slice(0, 400));
+      u.rate = 1.05;
+      u.pitch = 1;
+      u.volume = 0.9;
+      // Prefer a reasonably natural voice if available
+      var voices = window.speechSynthesis.getVoices();
+      var preferred = voices.find(function (v) { return /en(-|_)US|en(-|_)GB/i.test(v.lang) && /Google|Samantha|Daniel|Karen|Moira/i.test(v.name); }) ||
+                     voices.find(function (v) { return /^en/i.test(v.lang); });
+      if (preferred) u.voice = preferred;
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
   function commitSpeech(stage, sp) {
     typing = null;
     add(sp.member.name, sp.text, { role: sp.member.role, claim: sp.claim, to: sp.to, vote: sp.vote, via: sp.via, stage: stage, round: sp.round });
     state.votes[sp.member.name] = { agree: !!sp.vote.agree, note: sp.vote.note || "", round: sp.round, stage: stage };
     render();
+    if (settings.speakTeam) speakText(sp.member.name + " says: " + sp.text, sp.member.name);
   }
 
   function playRound(stage, round) {
@@ -1101,12 +1178,12 @@
   function researchStep() {
     if (!settings.webResearch) { state.researchDone = true; return Promise.resolve(); }
     var dev = memberByRole("Researcher");
-    setTyping(dev); setStatus(dev.name + " is searching the web…");
+    setTyping(dev); setStatus(dev.name + " is searching the web (Wikipedia, DuckDuckGo, news-oriented)…");
     return doResearch(state.problem).then(function () {
       state.researchDone = true; typing = null;
-      var n = /^No useful/.test(state.research) ? 0 : state.research.split("\n\n").length;
-      add("System", n ? "🔎 " + dev.name + " found " + n + " public notes (Wikipedia and DuckDuckGo). The team can use them."
-                      : "🔎 No public search results came back (offline, or a very specific topic). The team will use what it knows.");
+      var n = (state.researchItems && state.researchItems.length) || (/^No useful/.test(state.research) ? 0 : state.research.split("\n\n").length);
+      add("System", n ? "🔎 " + dev.name + " found " + n + " public sources (Wikipedia + DuckDuckGo, including news-oriented queries). Sources are linked in the research card."
+                      : "🔎 No public search results came back (offline, blocked, or very specific topic). The team will use built-in knowledge.");
       render();
     }).catch(function () { state.researchDone = true; typing = null; });
   }
@@ -1507,6 +1584,7 @@
     $("sPlanRounds").value = settings.planRounds || 3;
     $("sBuildIters").value = settings.buildIters || 4;
     $("sAutosave").checked = !!settings.autosave;
+    if ($("sSpeak")) $("sSpeak").checked = !!settings.speakTeam;
     $("customBlock").classList.toggle("hidden", settings.engine !== "custom");
     $("freeBlock").classList.toggle("hidden", settings.engine !== "free");
     $("testResult").textContent = "";
@@ -1524,6 +1602,7 @@
     settings.planRounds = Math.max(2, Math.min(8, +$("sPlanRounds").value || 3));
     settings.buildIters = Math.max(1, Math.min(8, +$("sBuildIters").value || 4));
     settings.autosave = $("sAutosave").checked;
+    if ($("sSpeak")) settings.speakTeam = $("sSpeak").checked;
     saveSettings();
     toast("Settings saved");
   }
@@ -1630,6 +1709,53 @@
       this.style.height = Math.min(this.scrollHeight, 120) + "px";
     });
 
+    // Voice input (Web Speech API)
+    var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var recog = null, listening = false;
+    if (SpeechRec) {
+      recog = new SpeechRec();
+      recog.continuous = false;
+      recog.interimResults = true;
+      recog.lang = (navigator.language || "en-US");
+      recog.onresult = function (ev) {
+        var txt = "";
+        for (var i = ev.resultIndex; i < ev.results.length; i++) txt += ev.results[i][0].transcript;
+        if (txt) {
+          var inp = $("userInput");
+          inp.value = (inp.value ? inp.value + " " : "") + txt.trim();
+          inp.dispatchEvent(new Event("input"));
+        }
+      };
+      recog.onend = function () {
+        listening = false;
+        var mb = $("micBtn");
+        if (mb) { mb.style.background = "#161a32"; mb.style.color = "#8b92b8"; mb.textContent = "🎤"; }
+      };
+      recog.onerror = function () {
+        listening = false;
+        var mb = $("micBtn");
+        if (mb) { mb.style.background = "#161a32"; mb.style.color = "#8b92b8"; mb.textContent = "🎤"; }
+        toast("Voice input unavailable or permission denied");
+      };
+    }
+    if ($("micBtn")) {
+      $("micBtn").onclick = function () {
+        if (!recog) return toast("Voice input not supported in this browser");
+        if (listening) {
+          try { recog.stop(); } catch (e) {}
+          listening = false;
+          this.style.background = "#161a32"; this.style.color = "#8b92b8"; this.textContent = "🎤";
+          return;
+        }
+        try {
+          recog.start();
+          listening = true;
+          this.style.background = "#7c8cff"; this.style.color = "#fff"; this.textContent = "⏹";
+          toast("Listening… speak now");
+        } catch (e) { toast("Could not start microphone"); }
+      };
+    }
+
     $("bBuild").onclick = function () {
       if (building) { stopBuild = true; toast("Stopping after this step…"); return; }
       startBuild();
@@ -1638,10 +1764,15 @@
     $("bPreview").onclick = function () { previewBuild(); };
     $("dPreview").addEventListener("close", function () { $("pvFrame").srcdoc = ""; });
     $("bResearch").onclick = function () {
-      if (!state.problem) return toast("Describe a topic first");
-      setStatus("Researching...");
-      doResearch(state.problem).then(function () {
-        add("System", "Research refreshed.");
+      var topic = state.problem || ($("userInput").value || "").trim();
+      if (!topic) return toast("Describe a topic first (or type one in the box)");
+      var extra = ($("userInput").value || "").trim();
+      if (extra && extra === topic) extra = "";
+      setStatus("Researching (Wikipedia + DuckDuckGo + news queries)…");
+      doResearch(topic, extra || undefined).then(function () {
+        var n = (state.researchItems && state.researchItems.length) || 0;
+        add("System", n ? "Research updated — " + n + " sources found. Open the research card for links & actions." : "Research finished (no new public results).");
+        if (!state.problem) { state.problem = topic; if (state.stage === "idle") state.stage = "research"; }
         render();
       }).catch(function (e) {
         add("System", "Research failed: " + (e.message || e));
@@ -1775,6 +1906,56 @@
       d.addEventListener("click", function (e) {
         if (e.target === d) closeDialog(d);
       });
+    });
+
+    // Research card actions (event delegation — survives re-renders)
+    $("chat").addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-research-act]");
+      if (!btn) return;
+      var act = btn.getAttribute("data-research-act");
+      if (act === "refresh") {
+        if (busy || running) return toast("Team is busy — wait or Stop first");
+        setStatus("Refreshing research…");
+        doResearch(state.problem || state.title || "web app").then(function () {
+          add("System", "Research refreshed with latest public notes.");
+          setStatus(""); render();
+        }).catch(function () { setStatus(""); toast("Research refresh failed"); });
+      } else if (act === "custom") {
+        if (busy || running) return toast("Team is busy — wait or Stop first");
+        openDialog("dPrompt");
+        $("tPrompt").textContent = "Custom research query";
+        $("promptMsg").textContent = "Extra search terms (e.g. \"2026 Safari PWA limits\" or \"latest news on …\")";
+        $("promptVal").value = "";
+        $("promptYes").onclick = function () {
+          var q = ($("promptVal").value || "").trim();
+          closeDialog("dPrompt");
+          if (!q) return;
+          setStatus("Running custom research…");
+          doResearch(state.problem || state.title || "web app", q).then(function () {
+            add("System", "Added custom research for: " + snip(q, 60));
+            setStatus(""); render();
+          }).catch(function () { setStatus(""); toast("Custom research failed"); });
+        };
+        $("promptNo").onclick = function () { closeDialog("dPrompt"); };
+      } else if (act === "copy") {
+        var text = state.research || "";
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { toast("Research copied"); }).catch(function () { toast("Copy failed"); });
+        } else {
+          toast("Clipboard not available");
+        }
+      } else if (act === "pin") {
+        var pin = "\n\n--- Pinned research ---\n" + (state.research || "").slice(0, 4000);
+        state.refs = (state.refs || "") + pin;
+        autosave();
+        toast("Research pinned to Notes");
+      } else if (act === "clear") {
+        state.research = "";
+        state.researchItems = [];
+        render();
+        autosave();
+        toast("Research notes cleared");
+      }
     });
   }
 

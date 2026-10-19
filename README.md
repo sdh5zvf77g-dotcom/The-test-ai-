@@ -1,33 +1,55 @@
-# AI Council v3 (staged team)
+# AI Council v3.2 — best practical version
+
+Staged multi-agent team that **researches → plans → builds** single-file mobile web apps. Dashboard layout is unchanged from the original.
 
 ## Upload to GitHub Pages
-Upload ALL files to the ROOT of your repo (not the zip itself, not inside a folder):
-index.html, app.js, sw.js, manifest.webmanifest, apple-touch-icon.png, icon-192.png, icon-512.png.
-Settings > Pages > Deploy from branch > main > / (root). Open the https://USERNAME.github.io/REPO/ link in Safari.
-If you already installed an older version: delete the Home Screen icon, open the link in Safari, Add to Home Screen again.
-Header should show "AI Council" with a stage bar (Research > Plan > Build) once you send a problem.
+Upload **all** of these to the **root** of the repo (not inside a folder):
 
-## How it works
-1. Send a problem. The team researches (optional web notes), talks in rounds, and VOTES. Research ends only when everyone agrees.
-2. The team then plans (features, screens, data, acceptance criteria) and VOTES again.
-3. Only then does Build & Preview appear (toolbar and a green card at the end of the chat).
-4. Build: Builder writes the app, a sandbox tests it, the Skeptic reviews, fixes loop, then Preview opens automatically.
-- Type a note while the plan is locked: it reopens the plan. Type a change after a build: it rebuilds.
-- Stop pauses the team; Continue resumes.
+- index.html
+- app.js
+- sw.js
+- manifest.webmanifest
+- icon-192.png
+- icon-512.png
+- apple-touch-icon.png
 
-## Engines
-- Free AI (default): public text service, no key. Can be busy or change; if it fails the team keeps talking with built-in voices.
-- Built-in team (offline): scripted voices + starter apps (task list, tracker, timer, tip calculator, notes). Always works, no internet.
-- Custom API: your key (Groq, OpenRouter, Gemini, NVIDIA, OpenAI-compatible, Anthropic). Key stays in this browser.
-Messages from built-in voices are tagged "offline voice". Offline builds are templates, not custom AI-written apps.
+Settings → Pages → Deploy from branch → main → / (root).  
+Open the `https://USERNAME.github.io/REPO/` link in **Safari**.  
+If you already installed an older version: delete the Home Screen icon, open the link, Add to Home Screen again.
 
-## Fixed from the zip you sent
-- The preview window was always drawn over the page (CSS display bug).
-- The build test could never pass (sandbox was unreadable), so every build was rejected.
-- Free AI put the whole prompt in the URL and failed; now uses POST, retries, then falls back.
-- Team spoke one member per tap with no agreement gates; Build was available from the start.
+## What’s new / more useful
 
-## Improving an existing app
-- Say "Improve this app" (or upload files): the team loads/inspects the REAL code and plans from automatic findings.
-- Built-in (offline) team can inspect but not rewrite code. With Free AI or your key, upload ONE html file and the Builder edits it with search/replace blocks.
-- The built-in team no longer invents a to-do list for ideas it cannot build; it says so and asks you to connect an AI.
+### Stronger live research
+- Wikipedia (with real page links) + DuckDuckGo Instant Answer
+- Extra query variants: best practices, mobile/Safari/iPhone, **latest / news / current**
+- Research card shows **source · title · text + “Open source ↗” links**
+- Card actions: **↻ Refresh**, **+ Custom query**, **Copy**, **Pin to Notes**, **Clear**
+- Toolbar **Research** button uses whatever is currently typed as an extra query
+- Researcher is instructed to ground findings in the real research block (no invented live news)
+
+### Everyday extras
+- **🎤 Voice input** (next to Go) — Web Speech API
+- **Speak team messages** toggle in Settings (text-to-speech)
+- Same header / stage bar / chat / toolbar / input layout
+
+### Engines (unchanged core)
+- Free AI (Pollinations, no key) → falls back to built-in voices
+- Built-in offline team + starter templates
+- Custom API (Groq, OpenRouter, Gemini, NVIDIA, OpenAI-compatible, Anthropic)
+
+### Workflow
+1. Describe a problem / app.
+2. Team researches (optional web notes) → discusses → votes until agreement.
+3. Plans features, screens, data, acceptance criteria → votes again.
+4. Only then **Build & Preview** appears. Builder writes code → sandbox tests → Skeptic reviews → Preview opens.
+- Notes while plan is locked reopen the plan.
+- Changes after a build trigger a rebuild.
+- Stop / Continue work as before.
+
+### Improving an existing app
+Say “Improve this app” or upload an HTML file. The team inspects real code. With Free AI or your key the Builder uses SEARCH/REPLACE edit blocks.
+
+## Tips
+- Keep “One AI call per member” off and plan rounds at 3 to stay within free-tier limits.
+- For pure research topics use the Research template or the Research button; the team still runs the full staged flow unless you stop it.
+- Research is public-source only (Wikipedia + DDG). It is useful for facts and current abstracts, not a full news crawler.
