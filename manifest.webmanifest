@@ -1,1 +1,21 @@
-{"name":"AI Council","short_name":"AI Council","start_url":"./","scope":"./","display":"standalone","background_color":"#0b0d17","theme_color":"#0b0d17","icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"}]}
+{
+  "name": "AI Council",
+  "short_name": "AI Council",
+  "description": "Team of AIs that research, plan, and build web apps",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b0d17",
+  "theme_color": "#0b0d17",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

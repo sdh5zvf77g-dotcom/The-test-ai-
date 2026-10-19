@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d17">
+<title>AI Council</title>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#0b0d17;color:#eef0ff;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column;height:100dvh;min-height:0;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none;-webkit-tap-highlight-color:transparent}
+header{flex:none;display:flex;align-items:center;gap:8px;padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top,0px));background:#11142a;border-bottom:1px solid #2a3055;z-index:20}
+.logo{font-weight:700;font-size:1.05rem}.logo span{color:#3dd9c5}
+#phaseChip{font-size:.72rem;font-weight:600;padding:3px 9px;border-radius:999px;background:#1e2340;color:#3dd9c5;border:1px solid #2a3055}
+.hdr-actions{margin-left:auto;display:flex;gap:4px}
+.icon-btn{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;color:#8b92b8;font-size:1.1rem}
+#statusBar{flex:none;display:none;align-items:center;gap:8px;padding:6px 14px;font-size:.8rem;color:#8b92b8;background:#11142a;border-bottom:1px solid #2a3055}
+#statusBar.show{display:flex}
+.spin{width:12px;height:12px;border:2px solid #2a3055;border-top-color:#7c8cff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+main{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px;background:#0b0d17;color:#eef0ff;display:flex;flex-direction:column;gap:10px}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 20px;gap:14px;min-height:240px;color:#8b92b8}
+.empty h3{color:#eef0ff;font-size:1.25rem}
+.empty p{max-width:300px;font-size:.92rem}
+.tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:320px;margin-top:8px}
+.tpl-btn{padding:12px 10px;border-radius:12px;background:#161a32;border:1px solid #2a3055;font-size:.85rem;font-weight:500;color:#eef0ff}
+.msg{display:flex;flex-direction:column;gap:4px;max-width:100%}
+.msg.you{align-items:flex-end}
+.msg .bubble{background:#161a32;border:1px solid #2a3055;border-radius:12px;padding:10px 13px;max-width:92%;white-space:pre-wrap;word-break:break-word}
+.msg.you .bubble{background:#7c8cff;border-color:transparent;color:#fff}
+.msg.system .bubble{background:transparent;border-style:dashed;color:#8b92b8;font-size:.88rem;text-align:center;max-width:100%}
+.msg .who{font-size:.75rem;font-weight:600;display:flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.card{background:#1e2340;border:1px solid #2a34;background:#1e2340;border-radius:12px;padding:10px 12px;font-size:.88rem}
+.card summary{cursor:pointer;font-weight:700;color:#3dd9c5}
+.deliv{background:#1e2340;border:1px solid #4ade80;border-radius:12px;padding:12px}
+.deliv .dh{font-weight:700;color:#4ade80;margin-bottom:6px}
+.deliv .actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+footer{flex:none;padding:8px 10px calc(10px + env(safe-area-inset-bottom,0px));background:#11142a;border-top:1px solid #2a3055;display:flex;flex-direction:column;gap:6px;z-index:20}
+.toolbar{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbtn{flex:none;display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:8px;background:#161a32;border:1px solid #2a3055;font-size:.8rem;color:#8b92b8;white-space:nowrap;min-width:44px;min-height:44px}
+.tbtn.primary{background:#7c8cff;color:#fff;border-color:transparent;font-weight:600;min-width:44px;min-height:44px}
+.input-row{display:flex;gap:8px;align-items:flex-end;width:100%;min-width:0}.input-row textarea{min-width:0}
+#userInput{flex:1;min-height:44px;max-height:120px;resize:none;background:#161a32;border:1px solid #2a3055;border-radius:12px;padding:10px 12px;color:#eef0ff;line-height:1.4;font-size:16px}
+#sendBtn{width:48px;min-width:48px;height:48px;border-radius:12px;background:#7c8cff;color:#fff;font-size:1rem;font-weight:700;display:grid;place-items:center;flex:0 0 48px;visibility:visible;opacity:1;position:relative;z-index:25;touch-action:manipulation;min-height:44px}
+#sendBtn:focus-visible{outline:3px solid #eef0ff;outline-offset:2px}#sendBtn[aria-busy="true"]{background:#5968d6}
+#sendBtn:disabled{opacity:.4}
+dialog{border:none;border-radius:16px;background:#161a32;color:#eef0ff;padding:0;max-width:96vw;width:420px;max-height:88dvh;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+.dlg{padding:18px 16px;overflow-y:auto;max-height:88dvh}
+.dlg h2{font-size:1.15rem;margin-bottom:12px}
+.dlg label{display:block;margin:12px 0 4px;font-weight:600;font-size:.88rem}
+.dlg input[type=text],.dlg input[type=password],.dlg input[type=number],.dlg select,.dlg textarea{width:100%;background:#0b0d17;border:1px solid #2a3055;border-radius:10px;padding:9px 11px;font-size:16px;color:#eef0ff}
+.dlg textarea{min-height:80px;resize:vertical}
+.dlg .hint{color:#8b92b8;font-size:.78rem;margin:3px 0 0}
+.dlg .chk{display:flex;gap:10px;align-items:center;margin:10px 0}
+.dlg .chk input{width:20px;height:20px;flex:none}
+.dlg .chk label{margin:0;font-weight:500}
+.dfoot{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.btn{padding:8px 14px;border-radius:10px;border:1px solid #2a3055;font-size:.9rem;font-weight:500;color:#eef0ff;min-width:44px;min-height:44px}
+.btn.primary{background:#7c8cff;color:#fff;border-color:transparent;min-width:44px;min-height:44px}
+.btn.danger{color:#f87171}
+.member-row,.proj-row{display:flex;gap:8px;align-items:center;background:#1e2340;border:1px solid #234;border-radius:10px;padding:8px;margin:6px 0}
+.member-row input[type=text]{flex:1;min-width:0;background:#0b0d17;border:1px solid #234;border-radius:8px;padding:6px 8px;color:#eef0ff}
+.member-row select{background:#0b0d17;border:1px solid #234;border-radius:8px;padding:6px;color:#eef0ff}
+.proj-row .info{flex:1;min-width:0}
+.proj-row .info b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj-row .info small{color:#8b92b8}
+.provider-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.pchip{padding:8px;border-radius:10px;border:1px solid #234;background:#1e2340;text-align:center;font-size:.82rem;font-weight:600;color:#eef0ff}
+.pchip.active{border-color:#7c8cff;background:#7c8cff;color:#fff}
+#toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#eef0ff;color:#0b0d17;padding:10px 18px;border-radius:999px;font-size:.88rem;opacity:0;pointer-events:none;transition:opacity .25s;z-index:100;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+#dPreview{width:96vw;height:92dvh;max-width:none;max-height:92dvh;padding:0;flex-direction:column}
+#dPreview[open]{display:flex}
+.pvbar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #2a3055;flex:none;min-height:44px}
+#pvFrame{flex:1;width:100%;border:0;background:#fff}
+#errBanner{position:fixed;top:0;left:0;right:0;z-index:9999;background:#b00020;color:#fff;padding:10px 12px;font:13px/1.4 -apple-system,sans-serif;white-space:pre-wrap;display:none}
+.hidden{display:none!important}
+#stageBar{flex:none;display:flex;align-items:center;gap:6px;padding:6px 12px;background:#0e1124;border-bottom:1px solid #2a3055;font-size:.78rem}
+#stageBar .arrow{color:#2a3055}
+.stage{padding:3px 10px;border-radius:999px;border:1px solid #2a3055;color:#8b92b8;font-weight:600}
+.stage.active{color:#0b0d17;background:#3dd9c5;border-color:#3dd9c5}
+.stage.done{color:#4ade80;border-color:#2f6f4a}
+.msg .who .to{color:#8b92b8;font-weight:400}
+.sumtxt{margin-top:6px;white-space:pre-wrap;font-size:.88rem}
+.dots{display:inline-flex;gap:4px;align-items:center;height:14px}
+.dots i{width:7px;height:7px;border-radius:50%;background:#8b92b8;animation:blink 1.2s infinite both}
+.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.cta{display:flex;gap:12px;align-items:center;justify-content:space-between;background:#12301f;border:1px solid #4ade80;border-radius:12px;padding:12px}
+.cta small{color:#9bd9b4}
+.tbtn.big{background:#4ade80;color:#06210f;font-weight:700;border-color:transparent;min-width:44px;min-height:44px}
+.tbtn.warn{background:#3a1d22;color:#f87171;border-color:#6b2a33;min-width:44px;min-height:44px}
+</style>
+</head>
+<body>
+<div id="errBanner"></div>
+<header>
+  <div class="logo">AI <span>Council</span></div>
+  <div id="phaseChip">Idle</div>
+  <div class="hdr-actions">
+    <button type="button" class="icon-btn" id="bProjects" title="Projects">P</button>
+    <button type="button" class="icon-btn" id="bMembers" title="Team">T</button>
+    <button type="button" class="icon-btn" id="bSettings" title="Settings">S</button>
+  </div>
+</header>
+<div id="stageBar" class="hidden"><div class="stage" id="st_research">Research</div><span class="arrow">›</span><div class="stage" id="st_plan">Plan</div><span class="arrow">›</span><div class="stage" id="st_build">Build</div></div>
+<div id="statusBar"><div class="spin"></div><span id="statusText">Working...</span></div>
+<main id="chat">
+  <div class="empty" id="emptyState">
+    <h3>AI Council</h3>
+    <p>Your team researches, agrees, plans, agrees again, and only then builds and previews your app.</p>
+    <div class="tpl-grid">
+      <button type="button" class="tpl-btn" data-tpl="build">Build an app</button>
+      <button type="button" class="tpl-btn" data-tpl="research">Research a topic</button>
+      <button type="button" class="tpl-btn" data-tpl="improve">Improve this app</button>
+      <button type="button" class="tpl-btn" data-tpl="debug">Debug / fix code</button>
+    </div>
+  </div>
+</main>
+<footer>
+  <div class="toolbar">
+    <button type="button" class="tbtn warn hidden" id="bStop">■ Stop</button>
+    <button type="button" class="tbtn hidden" id="bContinue">▶ Continue</button>
+    <button type="button" class="tbtn big hidden" id="bBuild">🛠 Build &amp; Preview</button>
+    <button type="button" class="tbtn hidden" id="bPreview">▶ Preview</button>
+    <button type="button" class="tbtn" id="bResearch">Research</button>
+    <button type="button" class="tbtn" id="bUpload">Upload</button>
+    <button type="button" class="tbtn" id="bCamera">Camera</button>
+    <button type="button" class="tbtn" id="bFiles">Files</button>
+    <button type="button" class="tbtn" id="bRefs">Notes</button>
+    <button type="button" class="tbtn hidden" id="bDownload">Download</button>
+  </div>
+  <div class="input-row">
+    <textarea id="userInput" rows="1" placeholder="Describe a problem or app to build..." enterkeyhint="send"></textarea>
+    <button type="button" id="sendBtn" aria-label="Send">Go</button>
+  </div>
+</footer>
+<div id="toast"></div>
+<dialog id="dSettings"><div class="dlg"><h2>Settings</h2>
+<label>AI Engine</label>
+<select id="sEngine"><option value="free">Free AI (no API key)</option><option value="local">Built-in team (offline, no AI model)</option><option value="custom">Custom API endpoint (your key)</option></select>
+<div id="freeBlock"><p class="hint">Free AI uses a public community text service. No key needed, but it can be slow or busy. If it fails, the team keeps talking with its built-in voices, so you always see them work.</p><button type="button" class="btn" id="bTestFree" style="margin-top:8px">Test free AI</button></div>
+<div id="customBlock" class="hidden">
+<label>Provider presets</label>
+<div class="provider-grid">
+<button type="button" class="pchip" data-p="groq">Groq</button>
+<button type="button" class="pchip" data-p="openrouter">OpenRouter</button>
+<button type="button" class="pchip" data-p="gemini">Gemini</button>
+<button type="button" class="pchip" data-p="nvidia">NVIDIA</button>
+</div>
+<label for="sUrl">Endpoint URL</label><input type="text" id="sUrl" placeholder="https://api.openai.com/v1/chat/completions" autocomplete="off" autocapitalize="off">
+<label for="sModel">Model</label><input type="text" id="sModel" list="modelList" placeholder="llama-3.3-70b-versatile" autocomplete="off" autocapitalize="off"><datalist id="modelList"></datalist>
+<button type="button" class="btn" id="bLoadModels" style="margin-top:6px">Load available models</button><p class="hint" id="modelsMsg"></p>
+<label for="sKey">API Key</label><input type="password" id="sKey" placeholder="sk-..." autocomplete="off">
+<p class="hint">Free-tier availability and limits vary. API keys are stored in this browser on this device; do not use a shared device. Some providers block browser requests (CORS); a small server-side proxy may be required.</p>
+<button type="button" class="btn" id="bTestKey" style="margin-top:8px">Test connection</button>
+</div>
+<p class="hint" id="testResult" style="margin-top:8px"></p>
+<div class="chk"><input type="checkbox" id="sBuildMode" checked><label for="sBuildMode">Team workflow: research, plan, build</label></div>
+<div class="chk"><input type="checkbox" id="sWeb" checked><label for="sWeb">Web research</label></div>
+<div class="chk"><input type="checkbox" id="sPerMember"><label for="sPerMember">One AI call per member (slower, more varied)</label></div>
+<div class="chk"><input type="checkbox" id="sAutoBuild"><label for="sAutoBuild">Build automatically when the plan is agreed</label></div>
+<p class="hint">Free models allow roughly 200 requests a day. Leave "One AI call per member" off and keep plan rounds at 3 to save them.</p>
+<label for="sPlanRounds">Minimum plan rounds (2-8)</label><input type="number" id="sPlanRounds" min="2" max="8" value="3">
+<label for="sBuildIters">Max build attempts (1-8)</label><input type="number" id="sBuildIters" min="1" max="8" value="4">
+<div class="chk"><input type="checkbox" id="sAutosave" checked><label for="sAutosave">Autosave</label></div>
+<div class="dfoot"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn primary" id="bSaveSettings">Save</button></div>
+</div></dialog>
+<dialog id="dMembers"><div class="dlg"><h2>Council members</h2><div id="membersList"></div>
+<div class="dfoot"><button type="button" class="btn" id="bAddMember">+ Add</button><button type="button" class="btn primary" data-close>Done</button></div></div></dialog>
+<dialog id="dProjects"><div class="dlg"><h2>Projects</h2><div id="projectsList"></div>
+<div class="dfoot"><button type="button" class="btn" id="bNewProject">+ New</button><button type="button" class="btn" id="bExport">Export</button><button type="button" class="btn primary" data-close>Done</button></div></dialog>
+<dialog id="dRefs"><div class="dlg"><h2>Reference notes</h2><textarea id="refsInput" placeholder="Constraints, APIs..."></textarea>
+<div class="dfoot"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn primary" id="bSaveRefs">Save</button></div></div></dialog>
+<dialog id="dFiles"><div class="dlg"><h2>Workspace files</h2><div id="filesList"></div>
+<div class="dfoot"><button type="button" class="btn primary" data-close>Close</button></div></div></dialog>
+<dialog id="dCamera"><div class="dlg"><h2>Camera</h2>
+<video id="camVideo" autoplay playsinline style="width:100%;border-radius:10px;background:#000;max-height:50vh"></video>
+<canvas id="camCanvas" class="hidden"></canvas>
+<div class="dfoot"><button type="button" class="btn" id="bCamStop">Stop</button><button type="button" class="btn primary" id="bCamSnap">Capture</button></div></div></dialog>
+<dialog id="dConfirm"><div class="dlg"><h2 id="tConfirm">Confirm</h2><p id="confirmMsg"></p>
+<div class="dfoot"><button type="button" class="btn" id="confirmNo">Cancel</button><button type="button" class="btn primary" id="confirmYes">Yes</button></div></div></dialog>
+<dialog id="dPrompt"><div class="dlg"><h2 id="tPrompt">Input</h2><p id="promptMsg"></p><input type="text" id="promptVal">
+<div class="dfoot"><button type="button" class="btn" id="promptNo">Cancel</button><button type="button" class="btn primary" id="promptYes">OK</button></div></div></dialog>
+<dialog id="dPreview"><div class="pvbar"><strong id="pvTitle">Preview</strong><button type="button" class="btn" data-close>Close</button></div>
+<iframe id="pvFrame" sandbox="allow-scripts allow-forms allow-modals allow-popups" title="preview"></iframe></dialog>
+<script>
+if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+</script>
+<script src="app.js?v=5"></script>
+</body>
+</html>
